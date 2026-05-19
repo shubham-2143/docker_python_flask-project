@@ -10,46 +10,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
-      # Checkout source code
-      - name: Git Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      # Configure SSH access
-      - name: Configure SSH
+      - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
-
           chmod 600 ~/.ssh/id_rsa
-
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      # Connect to EC2 and deploy application
-      - name: Deploy Python App
+      - name: Deploy to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
 
-            # Go to application folder
-            cd /home/ec2-user/python-app
+            # Go to correct folder
+            cd /home/ec2-user/docker_python_flask-project
 
             # Pull latest code
             git pull origin main
 
-            # Create virtual environment if not exists
+            # Create venv if not exists
             python3 -m venv venv
 
-            # Activate virtual environment
+            # Activate venv
             source venv/bin/activate
 
             # Install dependencies
             pip install -r requirements.txt
 
-            # Stop old application if running
+            # Stop old app
             pkill -f app.py || true
 
-            # Start application in background
+            # Start app
             nohup python3 app.py > output.log 2>&1 &
 
           EOF
