@@ -1,0 +1,49 @@
+name: Python Auto Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Step 1: Checkout code from GitHub
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      # Step 2: Setup SSH Key
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      # Step 3: Connect to server and deploy
+      - name: Deploy to EC2 Server
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+
+            # Go to project directory
+            cd /home/ubuntu/python-app
+
+            # Pull latest code
+            git pull origin main
+
+            # Create virtual environment if not exists
+            python3 -m venv venv
+
+            # Activate virtual environment
+            source venv/bin/activate
+
+            # Install dependencies
+            pip install -r requirements.txt
+
+            # Run Python application
+            nohup python3 app.py > output.log 2>&1 &
+
+          EOF
