@@ -11,25 +11,28 @@ jobs:
 
     steps:
 
-      # Step 1: Checkout code from GitHub
+      # Checkout source code
       - name: Git Checkout
         uses: actions/checkout@v4
 
-      # Step 2: Setup SSH Key
+      # Configure SSH access
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
+
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+
           chmod 600 ~/.ssh/id_rsa
+
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      # Step 3: Connect to server and deploy
-      - name: Deploy to EC2 Server
+      # Connect to EC2 and deploy application
+      - name: Deploy Python App
         run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
 
-            # Go to project directory
-            cd /home/ubuntu/python-app
+            # Go to application folder
+            cd /home/ec2-user/python-app
 
             # Pull latest code
             git pull origin main
@@ -43,7 +46,10 @@ jobs:
             # Install dependencies
             pip install -r requirements.txt
 
-            # Run Python application
+            # Stop old application if running
+            pkill -f app.py || true
+
+            # Start application in background
             nohup python3 app.py > output.log 2>&1 &
 
           EOF
